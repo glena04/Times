@@ -1,177 +1,45 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Prayer Times</title>
-  <style>
-    body {
-      font-family: 'Arial', sans-serif;
-      margin: 0;
-      height: 100vh;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      background-image: url('https://images.unsplash.com/photo-1465101162946-4377e57745c3?ixlib=rb-1.2.1&auto=format&fit=crop&w=1950&q=80'); /* Earth and sky image */
-      background-size: cover;
-      background-position: center;
-      background-repeat: no-repeat;
-    }
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Queue System</title>
+    <script>
+        const scriptURL = "https://script.google.com/a/macros/shop24.nu/s/AKfycbyTqiaONibMiENgy4VPE_wge3V8PanwwnsXqLz7-e1ghQewhf6HAYN_rSx8XTkykbK6pg/exec"; // Replace with your Web App URL
 
-    .prayer-container {
-      background: rgba(225, 225, 225, 22);
-      padding: 2rem;
-      border-radius: 12px;
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-      text-align: center;
-      width: 300px;
-      backdrop-filter: blur(5px); /* Adds a blur effect to the background */
-    }
+        async function takeTicket() {
+            let response = await fetch(scriptURL + "?action=takeTicket");
+            let ticketNumber = await response.text();
+            document.getElementById("ticket").innerText = "Your Ticket: " + ticketNumber;
+        }
 
-    h1 {
-      font-size: 1.5rem;
-      color: #333;
-      margin-bottom: 1.5rem;
-    }
+        async function callNext() {
+            let response = await fetch(scriptURL + "?action=nextCustomer");
+            let nextCustomer = await response.text();
+            document.getElementById("calledCustomer").innerText = "Next: " + nextCustomer;
+        }
 
-    #date-time {
-      font-size: 1rem;
-      color: #2c9129;
-      margin-bottom: 1rem;
-    }
-
-    #prayer-times {
-      display: flex;
-      flex-direction: column;
-      gap: 1rem;
-    }
-
-    .prayer-time {
-      padding: 1rem;
-      border-radius: 8px;
-      color: white;
-      font-weight: bold;
-      transition: all 0.3s ease;
-    }
-
-    .prayer-time.expired {
-      opacity: 10.5;
-      transform: translateY(10px);
-    }
-
-    .prayer-time.current {
-      animation: pulse 1.5s infinite;
-    }
-
-    @keyframes pulse {
-      0% { transform: scale(1); }
-      50% { transform: scale(1.05); }
-      100% { transform: scale(1); }
-    }
-  </style>
+        async function loadQueue() {
+            let response = await fetch(scriptURL + "?action=getQueue");
+            let queueData = await response.json();
+            let queueList = document.getElementById("queueList");
+            queueList.innerHTML = queueData.map(row => `<li>Ticket ${row[0]} - ${row[1]}</li>`).join("");
+        }
+    </script>
 </head>
-<body>
-  <div class="prayer-container">
-    <h1>Prayer Times</h1>
-    <div id="date-time">Loading date and time...</div>
-    <div id="prayer-times">
-      <p>Loading prayer times...</p>
-    </div>
-  </div>
+<body onload="loadQueue()">
+    <h1>Queue System</h1>
 
-  <script>
-    const prayerTimesContainer = document.getElementById("prayer-times");
-    const dateTimeContainer = document.getElementById("date-time");
+    <h2>Customer</h2>
+    <button onclick="takeTicket()">Take a Ticket</button>
+    <p id="ticket"></p>
 
-    // Function to update the current date and time
-    function updateDateTime() {
-      const now = new Date();
-      const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit' };
-      const formattedDateTime = now.toLocaleDateString('en-US', options);
-      dateTimeContainer.textContent = formattedDateTime;
-    }
+    <h2>Employee</h2>
+    <button onclick="callNext()">Call Next</button>
+    <p id="calledCustomer"></p>
 
-    // Function to fetch prayer times from Aladhan API
-    async function fetchPrayerTimes() {
-      const city = "Duesseldorf"; // Replace with user input or geolocation
-      const country = "Germany"; // Replace with user input or geolocation
-      const method = 2; // Calculation method (2 = Islamic Society of North America)
-
-      const apiUrl = `https://api.aladhan.com/v1/timingsByCity?city=${city}&country=${country}&method=${method}`;
-
-      try {
-        const response = await fetch(apiUrl);
-        const data = await response.json();
-        const timings = data.data.timings;
-
-        // Extract the 5 main prayer times
-        const prayerTimes = [
-          { name: "Fajr", time: timings.Fajr, color: "#1270de" },
-          { name: "Dhuhr", time: timings.Dhuhr, color: "#ff9100" },
-          { name: "Asr", time: timings.Asr, color: "#37ab44" },
-          { name: "Maghrib", time: timings.Maghrib, color: "#827B60" },
-          { name: "Isha", time: timings.Isha, color: "#000000" },
-        ];
-
-        displayPrayerTimes(prayerTimes);
-      } catch (error) {
-        console.error("Error fetching prayer times:", error);
-        prayerTimesContainer.innerHTML = "<p>Failed to load prayer times. Please try again later.</p>";
-      }
-    }
-
-    // Function to display prayer times
-    function displayPrayerTimes(prayerTimes) {
-      prayerTimesContainer.innerHTML = ""; // Clear loading message
-      const now = new Date();
-      let currentPrayer = null;
-
-      // Convert prayer times to Date objects for easier comparison
-      const prayerTimesWithDates = prayerTimes.map(prayer => {
-        const [hours, minutes] = prayer.time.split(":");
-        const prayerDateTime = new Date();
-        prayerDateTime.setHours(hours, minutes, 0, 0);
-        return { ...prayer, dateTime: prayerDateTime };
-      });
-
-      // Find the current prayer time
-      for (let i = 0; i < prayerTimesWithDates.length; i++) {
-        const currentPrayerTime = prayerTimesWithDates[i];
-        const nextPrayerTime = prayerTimesWithDates[i + 1];
-
-        if (now >= currentPrayerTime.dateTime && (!nextPrayerTime || now < nextPrayerTime.dateTime)) {
-          currentPrayer = currentPrayerTime;
-          break;
-        }
-      }
-
-      // Display all prayer times
-      prayerTimesWithDates.forEach((prayer) => {
-        const prayerDiv = document.createElement("div");
-        prayerDiv.className = "prayer-time";
-        prayerDiv.style.backgroundColor = prayer.color;
-        prayerDiv.innerHTML = `<strong>${prayer.name}</strong>: ${prayer.time}`;
-        prayerTimesContainer.appendChild(prayerDiv);
-
-        // Check if the prayer time has passed
-        if (now > prayer.dateTime) {
-          prayerDiv.classList.add("expired");
-        }
-
-        // Highlight the current prayer time
-        if (prayer === currentPrayer) {
-          prayerDiv.classList.add("current");
-        }
-      });
-    }
-
-    // Update date and time every second
-    setInterval(updateDateTime, 1000);
-    updateDateTime();
-
-    // Fetch prayer times on page load and update every minute
-    fetchPrayerTimes();
-    setInterval(fetchPrayerTimes, 60000);
-  </script>
+    <h2>Queue Display</h2>
+    <ul id="queueList"></ul>
 </body>
 </html>
+
